@@ -14,7 +14,9 @@ from PIL import ImageDraw
 from PIL import ImageFont
 from colour import Color
 
+import os
 
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--video', type=str, help='input video path. live cam is used when not specified')
@@ -27,17 +29,17 @@ parser.add_argument('-display_off', help='do not display frames', action='store_
 
 args = parser.parse_args()
 
-CNN_FACE_MODEL = 'data/mmod_human_face_detector.dat' # from http://dlib.net/files/mmod_human_face_detector.dat.bz2
+CNN_FACE_MODEL = 'data/mmod_human_face_detector.dat'  # from http://dlib.net/files/mmod_human_face_detector.dat.bz2
 
 
 def bbox_jitter(bbox_left, bbox_top, bbox_right, bbox_bottom):
-    cx = (bbox_right+bbox_left)/2.0
-    cy = (bbox_bottom+bbox_top)/2.0
+    cx = (bbox_right + bbox_left) / 2.0
+    cy = (bbox_bottom + bbox_top) / 2.0
     scale = random.uniform(0.8, 1.2)
-    bbox_right = (bbox_right-cx)*scale + cx
-    bbox_left = (bbox_left-cx)*scale + cx
-    bbox_top = (bbox_top-cy)*scale + cy
-    bbox_bottom = (bbox_bottom-cy)*scale + cy
+    bbox_right = (bbox_right - cx) * scale + cx
+    bbox_left = (bbox_left - cx) * scale + cx
+    bbox_top = (bbox_top - cy) * scale + cy
+    bbox_bottom = (bbox_bottom - cy) * scale + cy
     return bbox_left, bbox_top, bbox_right, bbox_bottom
 
 
@@ -50,7 +52,7 @@ def drawrect(drawcontext, xy, outline=None, width=0):
 def run(video_path, face_path, model_weight, jitter, vis, display_off, save_text):
     # set up vis settings
     red = Color("red")
-    colors = list(red.range_to(Color("green"),10))
+    colors = list(red.range_to(Color("green"), 10))
     font = ImageFont.truetype("data/arial.ttf", 40)
 
     # set up video source
@@ -62,12 +64,14 @@ def run(video_path, face_path, model_weight, jitter, vis, display_off, save_text
 
     # set up output file
     if save_text:
-        outtext_name = os.path.basename(video_path).replace('.avi','_output.txt')
+        outtext_name = os.path.basename(video_path).replace('.avi', '_output.txt')
         f = open(outtext_name, "w")
     if vis:
-        outvis_name = os.path.basename(video_path).replace('.avi','_output.avi')
-        imwidth = int(cap.get(3)); imheight = int(cap.get(4))
-        outvid = cv2.VideoWriter(outvis_name,cv2.VideoWriter_fourcc('M','J','P','G'), cap.get(5), (imwidth,imheight))
+        outvis_name = os.path.basename(video_path).replace('.avi', '_output.avi')
+        imwidth = int(cap.get(3));
+        imheight = int(cap.get(4))
+        outvid = cv2.VideoWriter(outvis_name, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), cap.get(5),
+                                 (imwidth, imheight))
 
     # set up face detection mode
     if face_path is None:
@@ -76,16 +80,16 @@ def run(video_path, face_path, model_weight, jitter, vis, display_off, save_text
         facemode = 'GIVEN'
         column_names = ['frame', 'left', 'top', 'right', 'bottom']
         df = pd.read_csv(face_path, names=column_names, index_col=0)
-        df['left'] -= (df['right']-df['left'])*0.2
-        df['right'] += (df['right']-df['left'])*0.2
-        df['top'] -= (df['bottom']-df['top'])*0.1
-        df['bottom'] += (df['bottom']-df['top'])*0.1
+        df['left'] -= (df['right'] - df['left']) * 0.2
+        df['right'] += (df['right'] - df['left']) * 0.2
+        df['top'] -= (df['bottom'] - df['top']) * 0.1
+        df['bottom'] += (df['bottom'] - df['top']) * 0.1
         df['left'] = df['left'].astype('int')
         df['top'] = df['top'].astype('int')
         df['right'] = df['right'].astype('int')
         df['bottom'] = df['bottom'].astype('int')
 
-    if (cap.isOpened()== False):
+    if (cap.isOpened() == False):
         print("Error opening video stream or file")
         exit()
 
@@ -95,7 +99,7 @@ def run(video_path, face_path, model_weight, jitter, vis, display_off, save_text
 
     # set up data transformation
     test_transforms = transforms.Compose([transforms.Resize(224), transforms.CenterCrop(224), transforms.ToTensor(),
-                                         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+                                          transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     # load model weights
     model = model_static(model_weight)
@@ -108,7 +112,7 @@ def run(video_path, face_path, model_weight, jitter, vis, display_off, save_text
     model.train(False)
 
     # video reading loop
-    while(cap.isOpened()):
+    while (cap.isOpened()):
         ret, frame = cap.read()
         if ret == True:
             height, width, channels = frame.shape
@@ -124,14 +128,15 @@ def run(video_path, face_path, model_weight, jitter, vis, display_off, save_text
                     t = d.rect.top()
                     b = d.rect.bottom()
                     # expand a bit
-                    l -= (r-l)*0.2
-                    r += (r-l)*0.2
-                    t -= (b-t)*0.2
-                    b += (b-t)*0.2
-                    bbox.append([l,t,r,b])
+                    l -= (r - l) * 0.2
+                    r += (r - l) * 0.2
+                    t -= (b - t) * 0.2
+                    b += (b - t) * 0.2
+                    bbox.append([l, t, r, b])
             elif facemode == 'GIVEN':
                 if frame_cnt in df.index:
-                    bbox.append([df.loc[frame_cnt,'left'],df.loc[frame_cnt,'top'],df.loc[frame_cnt,'right'],df.loc[frame_cnt,'bottom']])
+                    bbox.append([df.loc[frame_cnt, 'left'], df.loc[frame_cnt, 'top'], df.loc[frame_cnt, 'right'],
+                                 df.loc[frame_cnt, 'bottom']])
 
             frame = Image.fromarray(frame)
             for b in bbox:
@@ -153,17 +158,17 @@ def run(video_path, face_path, model_weight, jitter, vis, display_off, save_text
                     output = torch.mean(output, 0)
                 score = F.sigmoid(output).item()
 
-                coloridx = min(int(round(score*10)),9)
+                coloridx = min(int(round(score * 10)), 9)
                 draw = ImageDraw.Draw(frame)
                 drawrect(draw, [(b[0], b[1]), (b[2], b[3])], outline=colors[coloridx].hex, width=5)
-                draw.text((b[0],b[3]), str(round(score,2)), fill=(255,255,255,128), font=font)
+                draw.text((b[0], b[3]), str(round(score, 2)), fill=(255, 255, 255, 128), font=font)
                 if save_text:
-                    f.write("%d,%f\n"%(frame_cnt,score))
+                    f.write("%d,%f\n" % (frame_cnt, score))
 
             if not display_off:
-                frame = np.asarray(frame) # convert PIL image back to opencv format for faster display
+                frame = np.asarray(frame)  # convert PIL image back to opencv format for faster display
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                cv2.imshow('',frame)
+                cv2.imshow('', frame)
                 if vis:
                     outvid.write(frame)
                 key = cv2.waitKey(1) & 0xFF
@@ -177,7 +182,7 @@ def run(video_path, face_path, model_weight, jitter, vis, display_off, save_text
     if save_text:
         f.close()
     cap.release()
-    print 'DONE!'
+    print('DONE!')
 
 
 if __name__ == "__main__":
